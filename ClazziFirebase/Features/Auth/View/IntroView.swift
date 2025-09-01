@@ -9,10 +9,15 @@ import SwiftUI
 
 struct IntroView: View {
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        ZStack{
+            Color.black.edgesIgnoringSafeArea(.all) //세이프영역 무시하고 전체에
+            Image("clazzi")
+                
+        }
     }
 }
 
 #Preview {
     IntroView()
 }
+

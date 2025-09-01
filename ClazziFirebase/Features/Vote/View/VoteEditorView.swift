@@ -7,7 +7,9 @@
 
 import SwiftUI
 
+
 struct VoteEditorView: View {
+    @EnvironmentObject var session: UserSession
     //뒤로가기 (모달 바텀시트) 닫기
     @Environment(\.dismiss) private var dismiss
     
@@ -18,13 +20,6 @@ struct VoteEditorView: View {
     var onSave: (Vote) -> Void //Vote라는 매개변수 받고 반환은 Void
     
     private var vote: Vote? = nil
-    /**
-     생성자
-     투표 생성으로 들어왔을 때는 투표 없어도 되기 때문에 nil
-     CreateVoteView()만 호출하면 투표 생성 모드
-     CreateVoteView(vote: someVote)처럼 넘겨주면 투표 수정 모드
-     저장완료시 실행할 콜백함수
-     */
     init(vote: Vote? = nil, onSave: @escaping(Vote)-> Void){
         self.vote = vote
         self.onSave = onSave
@@ -74,12 +69,12 @@ struct VoteEditorView: View {
                 
                 //생성,수정하기 버튼
                 Button(action: {
-                    if let vote = vote { //투표 수정
+                    if var vote = vote { //투표 수정
                         vote.title = title
                         vote.options = options.map{VoteOption(name: $0) }
                         onSave(vote)
-                    } else {  //투표 삭제
-                        let newVote = Vote(title: title, options:options.map{VoteOption(name: $0)})
+                    } else {  //투표 생성
+                        let newVote = Vote(title: title, createdBy: session.user?.uid ?? "", options:options.map{VoteOption(name: $0)})
                         onSave(newVote)
                     }
                     dismiss()
@@ -98,16 +93,4 @@ struct VoteEditorView: View {
     }
 }
 
-#Preview("투표 생성") {
-    VoteEditorView() { _ in }
-}
 
-#Preview("투표 수정") {
-    // 샘플 투표 생성
-    let sampleVote = Vote(title: "샘플 투표", options: [
-        VoteOption(name: "옵션 1"),
-        VoteOption(name: "옵션 2")
-    ])
-    // 뷰에 샘플 투표 전달
-    VoteEditorView(vote: sampleVote) { _ in }
-}

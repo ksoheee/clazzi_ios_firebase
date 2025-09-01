@@ -6,15 +6,11 @@
 //
 
 import SwiftUI
-import SwiftData
+import FirebaseAuth
 
 struct VoteListView: View {
-    @Environment(\.modelContext) private var modelContext
-    
-    @Binding var currentUserID: UUID?
-    
-    //스위프트 데이터에서 가져오기
-    @Query private var votes: [Vote]
+    @EnvironmentObject var session: UserSession
+    @StateObject private var voteViewModel = VoteViewModel()
     
     // 투표 수정 관련
     @State private var isPresentingEdit = false
@@ -29,9 +25,9 @@ struct VoteListView: View {
             ZStack { //겹쳐 쌓기 위해(IScrollView 위에 Button을 겹쳐서 올려놓을 수 있음)
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        ForEach(votes/*.indices, id: \.self*/) { vote in //votes의 인덱스를 가져오기 위해 indices
+                        ForEach(voteViewModel.votes) { vote in //votes의 인덱스를 가져오기 위해 indices
 //                            let vote = votes[index]
-                            NavigationLink(destination: VoteView(vote:vote, currentUserID: $currentUserID)){
+                            NavigationLink(destination: VoteView(vote:vote)){
                                 VoteCardView(vote: vote) {
                                     voteToDelete = vote
                                     showDeleteAlert = true
@@ -51,7 +47,7 @@ struct VoteListView: View {
                 ToolbarItem(placement: .navigationBarTrailing){
                     //화면 이동 방법1: 툴바 네이게이션 링크
                     NavigationLink(destination: VoteEditorView{ newVote in
-                        modelContext.insert(newVote)
+                        voteViewModel.createVote(newVote)
                     }){
                         Image(systemName: "plus") //버튼을 누르면 NavigationStack을 통해 이동
                     }
@@ -64,7 +60,7 @@ struct VoteListView: View {
                 }
                 //마이페이지
                 ToolbarItem(placement: .navigationBarTrailing){
-                    NavigationLink(destination: MyPageView(currentUserID: $currentUserID)){
+                    NavigationLink(destination: MyPageView()){
                         Image(systemName: "person")
                     }
                    
@@ -73,7 +69,8 @@ struct VoteListView: View {
             //수정화면 띄우기
             .navigationDestination(isPresented: $isPresentingEdit){
                 if let vote = voteToEdit{
-                    VoteEditorView(vote: vote) { updateVote in
+                    VoteEditorView(vote: vote) { updatedVote in
+                        voteViewModel.updateVote(updatedVote)
                         
                     }
                 }
@@ -84,16 +81,10 @@ struct VoteListView: View {
             //삭제 alert
             .alert("투표를 삭제하시겠습니까?", isPresented: $showDeleteAlert){ //showDeleteAlert==true가 되면 경고창
                 Button("삭제", role: .destructive){
-                    if let target = voteToDelete {
-                        modelContext.delete(target)
-                        do{
-                            try modelContext.save()
-                            voteToDelete = nil //삭제 후 상태 초기화
-                        }catch{
-                            print("삭제 실패: \(error)")
-                        }
+                    if let vote = voteToDelete {
+                        voteViewModel.deleteVote(vote)
+                        voteToDelete = nil
                     }
-
                 }
                 Button("취소", role: .cancel){
                     voteToDelete = nil //취소 시 상태 초기화
@@ -146,20 +137,3 @@ struct VoteCardView: View {
     }
 }
 
-#Preview {
-    // 1. 프리뷰 전용 inMemory 컨테이너 생성
-    let container = try! ModelContainer(
-        for: Vote.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-    )
-    
-    // 2. 더미 데이터 삽입
-    let context = container.mainContext
-    context.insert(Vote(title: "SwiftUI 공부하기"))
-    context.insert(Vote(title: "Firebase vs SwiftData"))
-    context.insert(Vote(title: "점심 메뉴 정하기"))
-    
-    // 3. 뷰에 컨테이너 주입
-    return VoteListView(currentUserID: .constant(UUID()))
-        .modelContainer(container)
-}
